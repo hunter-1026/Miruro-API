@@ -10,13 +10,13 @@ load_dotenv()
 app = FastAPI(title="Miruro API", version="2.0")
 
 # --- Security Configuration ---
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",") if os.getenv("ALLOWED_ORIGINS") else ["*"]
 API_KEY_NAME = "x-api-key"
 VALID_API_KEY = os.getenv("API_KEY")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS != ["*"] else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,6 +26,10 @@ app.add_middleware(
 async def secure_api(request: Request, call_next):
     # Allow home page (docs) without restrictions
     if request.url.path in ["/", "/docs", "/redoc", "/openapi.json"]:
+        return await call_next(request)
+
+    # If ALLOWED_ORIGINS is "*", allow everything (development mode)
+    if ALLOWED_ORIGINS == ["*"]:
         return await call_next(request)
 
     # 1. Check API Key
